@@ -1,0 +1,2 @@
+wwdg.c:50:6:MX_WWDG_Init	8	static
+wwdg.c:65:6:HAL_WWDG_MspInit	8	static

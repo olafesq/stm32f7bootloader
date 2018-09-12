@@ -1,0 +1,318 @@
+/**
+  ******************************************************************************
+  * File Name          : CAN.c
+  * Description        : This file provides code for the configuration
+  *                      of the CAN instances.
+  ******************************************************************************
+  ** This notice applies to any and all portions of this file
+  * that are not between comment pairs USER CODE BEGIN and
+  * USER CODE END. Other portions of this file, whether 
+  * inserted by the user or by software development tools
+  * are owned by their respective copyright owners.
+  *
+  * COPYRIGHT(c) 2018 STMicroelectronics
+  *
+  * Redistribution and use in source and binary forms, with or without modification,
+  * are permitted provided that the following conditions are met:
+  *   1. Redistributions of source code must retain the above copyright notice,
+  *      this list of conditions and the following disclaimer.
+  *   2. Redistributions in binary form must reproduce the above copyright notice,
+  *      this list of conditions and the following disclaimer in the documentation
+  *      and/or other materials provided with the distribution.
+  *   3. Neither the name of STMicroelectronics nor the names of its contributors
+  *      may be used to endorse or promote products derived from this software
+  *      without specific prior written permission.
+  *
+  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+  * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+  * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+  * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  *
+  ******************************************************************************
+  */
+
+/* Includes ------------------------------------------------------------------*/
+#include "can.h"
+
+#include "gpio.h"
+
+/* USER CODE BEGIN 0 */
+
+/* USER CODE END 0 */
+
+CAN_HandleTypeDef hcan1;
+
+/* CAN1 init function */
+void MX_CAN1_Init(void)
+{
+
+  hcan1.Instance = CAN1;
+  hcan1.Init.Prescaler = 4;
+  hcan1.Init.Mode = CAN_MODE_NORMAL;
+  hcan1.Init.SyncJumpWidth = CAN_SJW_1TQ;
+  hcan1.Init.TimeSeg1 = CAN_BS1_6TQ;
+  hcan1.Init.TimeSeg2 = CAN_BS2_1TQ;
+  hcan1.Init.TimeTriggeredMode = ENABLE;
+  hcan1.Init.AutoBusOff = DISABLE;
+  hcan1.Init.AutoWakeUp = ENABLE;
+  hcan1.Init.AutoRetransmission = DISABLE;
+  hcan1.Init.ReceiveFifoLocked = ENABLE;
+  hcan1.Init.TransmitFifoPriority = DISABLE;
+  if (HAL_CAN_Init(&hcan1) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+  //HAL_GPIO_WritePin(CAN_STB_GPIO_Port, CAN_STB_Pin, GPIO_PIN_RESET);	//CAN Stanby off
+  HAL_CAN_Start(&hcan1);	//Enables new drivers from HAL
+  //CAN1->IER |= 0x00000003; //Enables Stennikov library
+
+
+}
+
+void HAL_CAN_MspInit(CAN_HandleTypeDef* canHandle)
+{
+
+  GPIO_InitTypeDef GPIO_InitStruct;
+  if(canHandle->Instance==CAN1)
+  {
+  /* USER CODE BEGIN CAN1_MspInit 0 */
+
+  /* USER CODE END CAN1_MspInit 0 */
+    /* CAN1 clock enable */
+    __HAL_RCC_CAN1_CLK_ENABLE();
+  
+    /**CAN1 GPIO Configuration    
+    PA11     ------> CAN1_RX
+    PA12     ------> CAN1_TX 
+    */
+    GPIO_InitStruct.Pin = GPIO_PIN_11|GPIO_PIN_12;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    GPIO_InitStruct.Alternate = GPIO_AF9_CAN1;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+    /* CAN1 interrupt Init */
+    HAL_NVIC_SetPriority(CAN1_TX_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(CAN1_TX_IRQn);
+    HAL_NVIC_SetPriority(CAN1_RX0_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(CAN1_RX0_IRQn);
+    HAL_NVIC_SetPriority(CAN1_RX1_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(CAN1_RX1_IRQn);
+    HAL_NVIC_SetPriority(CAN1_SCE_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(CAN1_SCE_IRQn);
+  /* USER CODE BEGIN CAN1_MspInit 1 */
+
+  /* USER CODE END CAN1_MspInit 1 */
+  }
+}
+
+void HAL_CAN_MspDeInit(CAN_HandleTypeDef* canHandle)
+{
+
+  if(canHandle->Instance==CAN1)
+  {
+  /* USER CODE BEGIN CAN1_MspDeInit 0 */
+
+  /* USER CODE END CAN1_MspDeInit 0 */
+    /* Peripheral clock disable */
+    __HAL_RCC_CAN1_CLK_DISABLE();
+  
+    /**CAN1 GPIO Configuration    
+    PA11     ------> CAN1_RX
+    PA12     ------> CAN1_TX 
+    */
+    HAL_GPIO_DeInit(GPIOA, GPIO_PIN_11|GPIO_PIN_12);
+
+    /* CAN1 interrupt Deinit */
+    HAL_NVIC_DisableIRQ(CAN1_TX_IRQn);
+    HAL_NVIC_DisableIRQ(CAN1_RX0_IRQn);
+    HAL_NVIC_DisableIRQ(CAN1_RX1_IRQn);
+    HAL_NVIC_DisableIRQ(CAN1_SCE_IRQn);
+  /* USER CODE BEGIN CAN1_MspDeInit 1 */
+
+  /* USER CODE END CAN1_MspDeInit 1 */
+  }
+} 
+
+/* USER CODE BEGIN 1 */
+/* CAN1 RX BUFFER LOGIC */
+#define CAN1_RX_BUFFER_LENGTH 32 //could also be smaller? Theoretically 4 msg bursts @ 200 Hz
+#define CAN1_RX_BUFFER_LENGTH_MASK 0x0000001f
+
+CAN_msg can1_rx_buffer[CAN1_RX_BUFFER_LENGTH];
+int cb1_rx_first = 0, cb1_rx_last = 0, cb1_rx_length = 0;
+
+// returns number of messages in buffer
+int can1_rx_buffer_length() {return cb1_rx_length;}
+
+void can1_reception_handler() {
+	CAN_msg msg;
+	while ((CAN1->RF0R & 3) > 0) {
+		// get data
+		msg.data[0] = (uint8_t) 0xff & CAN1->sFIFOMailBox[0].RDLR;
+		msg.data[1] = (uint8_t) 0xff & CAN1->sFIFOMailBox[0].RDLR >> 8;
+		msg.data[2] = (uint8_t) 0xff & CAN1->sFIFOMailBox[0].RDLR >> 16;
+		msg.data[3] = (uint8_t) 0xff & CAN1->sFIFOMailBox[0].RDLR >> 24;
+		msg.data[4] = (uint8_t) 0xff & CAN1->sFIFOMailBox[0].RDHR;
+		msg.data[5] = (uint8_t) 0xff & CAN1->sFIFOMailBox[0].RDHR >> 8;
+		msg.data[6] = (uint8_t) 0xff & CAN1->sFIFOMailBox[0].RDHR >> 16;
+		msg.data[7] = (uint8_t) 0xff & CAN1->sFIFOMailBox[0].RDHR >> 24;
+
+		// get length
+		msg.len = (uint8_t) 0xf & CAN1->sFIFOMailBox[0].RDTR;
+
+		// get IDE, RTR and ID
+		msg.ide = (CAN1->sFIFOMailBox[0].RIR & 0x04) >> 2;
+		msg.rtr = (CAN1->sFIFOMailBox[0].RIR & 0x02) >> 1;
+		msg.id = (uint16_t) (((uint32_t) CAN1->sFIFOMailBox[0].RIR & 0xffe00000) >> 21);
+
+		can1_rx_buffer_enqueue(&msg);
+		// release FIFO
+		CAN1->RF0R |= 0x00000020;
+
+	}
+}
+
+void can1_rx_buffer_enqueue(CAN_msg *msg) {
+	if (can1_rx_buffer_length() < CAN1_RX_BUFFER_LENGTH) {
+		can1_rx_buffer[cb1_rx_last] = *msg;				// add message to buffer
+		cb1_rx_last = (cb1_rx_last+1) & CAN1_RX_BUFFER_LENGTH_MASK;		// increment pointer
+		++cb1_rx_length;
+	}
+}
+
+void can1_rx_buffer_dequeue(CAN_msg *msg) {
+	//CAN_msg msg;
+	if (can1_rx_buffer_length() > 0) {
+		*msg = can1_rx_buffer[cb1_rx_first];
+		cb1_rx_first = (cb1_rx_first+1) & CAN1_RX_BUFFER_LENGTH_MASK;	// increment pointer
+		--cb1_rx_length;
+	}
+}
+
+
+/* CAN transmitting buffers and logic */
+
+// CAN1 CIRCULAR Tx BUFFER
+#define CAN1_TX_BUFFER_LENGTH 64
+#define CAN1_TX_BUFFER_LENGTH_MASK 0x0000001f
+
+CAN_msg can1_tx_buffer[CAN1_TX_BUFFER_LENGTH];
+int cb1_tx_first = 0, cb1_tx_last = 0, cb1_tx_length = 0;
+
+// returns number of messages in buffer
+int can1_tx_sbuffer_length() {return cb1_tx_length;}
+
+// adds message to buffer. If buffer is full, message is not added.
+void can1_tx_buffer_enqueue(CAN_msg *msg) {
+	if (can1_tx_buffer_length() < CAN1_TX_BUFFER_LENGTH) {
+		can1_tx_buffer[cb1_tx_last] = *msg;				// add message to buffer
+		cb1_tx_last = (cb1_tx_last+1) & CAN1_TX_BUFFER_LENGTH_MASK;		// increment pointer
+		++cb1_tx_length;
+	}
+}
+
+// gets messsage from buffer. If there are no messages, it returns garbage, therefore check if buffer has something before using this function.
+CAN_msg can1_tx_buffer_dequeue() {
+	CAN_msg msg;
+	if (can1_tx_buffer_length() > 0) {
+		msg = can1_tx_buffer[cb1_tx_first];				// add message to buffer
+		cb1_tx_first = (cb1_tx_first+1) & CAN1_TX_BUFFER_LENGTH_MASK;	// increment pointer
+		--cb1_tx_length;
+	}
+	return msg;
+}
+
+// this function uses circular buffer and TXE interrupt to handle data bursts
+void can1_transmit(CAN_msg *msg) {
+	// add message to buffer
+	can1_tx_buffer_enqueue(msg);
+	// transmit if hardware is completely empty (if there is at least 1 pending message, TXE interrupt will handle the situation.
+
+	while (((CAN1->TSR & 0x1c000000) > 0) && (can1_tx_buffer_length() > 0)) {
+		CAN_msg msg2 = can1_tx_buffer_dequeue();
+
+		can_transmit(CAN1, &msg2, 0);
+	}
+}
+
+void can1_txe_interrupt_handler() {
+	// transmit another message from queue if mailbox is not empty
+	//CAN3->TSR &= 0xfffefefe;
+	CAN1->TSR |= 0x00010101;
+
+	while (((CAN1->TSR & 0x1c000000) > 0) && (can1_tx_buffer_length() > 0)) {
+		CAN_msg msg = can1_tx_buffer_dequeue();
+
+		can_transmit(CAN1, &msg, 0);
+	}
+}
+
+void can_transmit (CAN_TypeDef *CANx, CAN_msg *msg, int timeout) {
+	//wait for an empty mailbox to appear
+	//set up message
+	//request transmission
+
+	//wait while all TME bits in transmit status register are zeroes
+	while ((CANx->TSR & 0x1c000000) == 0) { //TODO: think this through as message might be disregarded
+		if (timeout-- < 0) {return;} //TODO: return 0 perhaps and not change any pointer in buffer?
+	}
+
+	// now that there is an empty mailbox, select it
+	int selected_mailbox = 0;
+	if ((CANx->TSR & 0x10000000) > 0) {
+		selected_mailbox = 2;
+	} else if ((CANx->TSR & 0x08000000) > 0) {
+		selected_mailbox = 1;
+	} else if ((CANx->TSR & 0x04000000) > 0) {
+		selected_mailbox = 0;
+	}
+
+	// set up DLC
+	CANx->sTxMailBox[selected_mailbox].TDTR &= (uint32_t) 0xfffffff0;
+	CANx->sTxMailBox[selected_mailbox].TDTR |= (uint32_t) msg->len;
+
+	// set up data
+	CANx->sTxMailBox[selected_mailbox].TDLR = ((uint32_t) msg->data[3] << 24) | ((uint32_t) msg->data[2] << 16) | ((uint32_t) msg->data[1] << 8) | ((uint32_t) msg->data[0]);
+	CANx->sTxMailBox[selected_mailbox].TDHR = ((uint32_t) msg->data[7] << 24) | ((uint32_t) msg->data[6] << 16) | ((uint32_t) msg->data[5] << 8) | ((uint32_t) msg->data[4]);
+
+	// set up IDE, RTR and ID. Request transmission.
+	CANx->sTxMailBox[selected_mailbox].TIR = ((uint32_t) msg->id << 21) | ((uint32_t) msg->ide << 2) | ((uint32_t) msg->rtr << 1) | 1;
+}
+
+void MX_CAN1_ConfigFilter() {
+	//TODO: one controller to FIFO0 and another to FIFO1
+	sFilterConfig1.SlaveStartFilterBank = 0;
+	sFilterConfig1.FilterActivation = ENABLE;
+	sFilterConfig1.FilterFIFOAssignment = CAN_FILTER_FIFO0;
+	sFilterConfig1.FilterIdHigh = 0;
+	sFilterConfig1.FilterIdLow = 0;
+	sFilterConfig1.FilterMaskIdHigh = 0;
+	sFilterConfig1.FilterMaskIdLow = 0;
+	sFilterConfig1.FilterMode = CAN_FILTERMODE_IDMASK;
+	sFilterConfig1.FilterBank = 0;
+	sFilterConfig1.FilterScale = CAN_FILTERSCALE_32BIT;
+	if (HAL_CAN_ConfigFilter(&hcan1, &sFilterConfig1) != HAL_OK)
+	{
+		Error_Handler();
+	}
+}
+/* USER CODE END 1 */
+
+/**
+  * @}
+  */
+
+/**
+  * @}
+  */
+
+/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

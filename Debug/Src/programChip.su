@@ -1,0 +1,5 @@
+programChip.c:53:5:FLASH_Erase	32	static
+programChip.c:32:6:FLASH_Init	8	static
+programChip.c:78:6:FLASH_Readout	0	static
+programChip.c:22:6:readeraFlash	24	static
+programChip.c:82:6:FLASH_Write	16	static
